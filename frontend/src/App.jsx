@@ -9,10 +9,12 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [credits, setCredits] = useState(null);
 
-  // Load conversations on mount
+  // Load conversations and credits on mount
   useEffect(() => {
     loadConversations();
+    loadCredits();
   }, []);
 
   // Load conversation details when selected
@@ -28,6 +30,15 @@ function App() {
       setConversations(convs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
+    }
+  };
+
+  const loadCredits = async () => {
+    try {
+      const data = await api.getCredits();
+      setCredits(data);
+    } catch (error) {
+      console.error('Failed to load credits:', error);
     }
   };
 
@@ -55,6 +66,28 @@ function App() {
 
   const handleSelectConversation = (id) => {
     setCurrentConversationId(id);
+  };
+
+  const handleDeleteConversation = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this conversation?')) {
+      return;
+    }
+
+    try {
+      await api.deleteConversation(id);
+
+      // Update list
+      const updatedConversations = conversations.filter(c => c.id !== id);
+      setConversations(updatedConversations);
+
+      // If deleted conversation was selected, clear selection or select another
+      if (currentConversationId === id) {
+        setCurrentConversationId(null);
+        setCurrentConversation(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
   };
 
   const handleSendMessage = async (content) => {
@@ -156,8 +189,9 @@ function App() {
             break;
 
           case 'complete':
-            // Stream complete, reload conversations list
+            // Stream complete, reload conversations list and credits
             loadConversations();
+            loadCredits();
             setIsLoading(false);
             break;
 
@@ -188,6 +222,8 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
+        credits={credits}
       />
       <ChatInterface
         conversation={currentConversation}

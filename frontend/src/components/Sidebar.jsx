@@ -6,6 +6,8 @@ export default function Sidebar({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  onDeleteConversation,
+  credits,
 }) {
   return (
     <div className="sidebar">
@@ -23,21 +25,44 @@ export default function Sidebar({
           conversations.map((conv) => (
             <div
               key={conv.id}
-              className={`conversation-item ${
-                conv.id === currentConversationId ? 'active' : ''
-              }`}
+              className={`conversation-item ${conv.id === currentConversationId ? 'active' : ''
+                }`}
               onClick={() => onSelectConversation(conv.id)}
             >
-              <div className="conversation-title">
-                {conv.title || 'New Conversation'}
+              <div className="conversation-content">
+                <div className="conversation-title">
+                  {conv.title || 'New Conversation'}
+                </div>
+                <div className="conversation-meta">
+                  {conv.message_count} messages
+                </div>
               </div>
-              <div className="conversation-meta">
-                {conv.message_count} messages
-              </div>
+              <button
+                className="delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteConversation(conv.id);
+                }}
+                title="Delete conversation"
+              >
+                ×
+              </button>
             </div>
           ))
         )}
       </div>
+
+      {credits && (
+        <div className="credits-display">
+          <div className="credits-label">OpenRouter Credits</div>
+          <div className="credits-value">
+            ${(credits.total_credits - credits.total_usage).toFixed(2)} remaining
+          </div>
+          <div className="credits-total">
+            of ${credits.total_credits} total
+          </div>
+        </div>
+      )}
     </div>
   );
 }

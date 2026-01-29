@@ -112,4 +112,26 @@ export const api = {
       }
     }
   },
+  /**
+   * Get OpenRouter credits.
+   */
+  async getCredits() {
+    const response = await fetch(`${API_BASE}/api/credits`);
+    if (!response.ok) {
+      throw new Error('Failed to get credits');
+    }
+    return response.json();
+  },
+  /**
+   * Delete a conversation.
+   */
+  async deleteConversation(conversationId) {
+    const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete conversation');
+    }
+    return response.json();
+  },
 };

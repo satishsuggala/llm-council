@@ -9,7 +9,7 @@ import uuid
 import json
 import asyncio
 
-from . import storage
+from . import storage, openrouter
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 
 app = FastAPI(title="LLM Council API")
@@ -62,12 +62,30 @@ async def list_conversations():
     return storage.list_conversations()
 
 
+@app.get("/api/credits")
+async def get_credits():
+    """Get OpenRouter credits."""
+    credits = await openrouter.get_credits()
+    if credits is None:
+        raise HTTPException(status_code=500, detail="Failed to fetch credits")
+    return credits
+
+
 @app.post("/api/conversations", response_model=Conversation)
 async def create_conversation(request: CreateConversationRequest):
     """Create a new conversation."""
     conversation_id = str(uuid.uuid4())
     conversation = storage.create_conversation(conversation_id)
     return conversation
+
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation."""
+    success = storage.delete_conversation(conversation_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"status": "success", "id": conversation_id}
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=Conversation)
@@ -160,7 +178,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results)
+            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Wait for title generation if it was started

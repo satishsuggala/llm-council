@@ -115,7 +115,8 @@ Now provide your evaluation and ranking:"""
 async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
-    stage2_results: List[Dict[str, Any]]
+    stage2_results: List[Dict[str, Any]],
+    label_to_model: Dict[str, str]
 ) -> Dict[str, Any]:
     """
     Stage 3: Chairman synthesizes final response.
@@ -124,6 +125,7 @@ async def stage3_synthesize_final(
         user_query: The original user query
         stage1_results: Individual model responses from Stage 1
         stage2_results: Rankings from Stage 2
+        label_to_model: Mapping from anonymous labels (Response A) to model names
 
     Returns:
         Dict with 'model' and 'response' keys
@@ -139,9 +141,18 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
+    # Create mapping text for context
+    mapping_text = "\n".join([
+        f"{label}: {model}"
+        for label, model in label_to_model.items()
+    ])
+
     chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
 
 Original Question: {user_query}
+
+The models were anonymized during peer review. Here is the mapping of labels to model names:
+{mapping_text}
 
 STAGE 1 - Individual Responses:
 {stage1_text}
@@ -149,7 +160,10 @@ STAGE 1 - Individual Responses:
 STAGE 2 - Peer Rankings:
 {stage2_text}
 
-Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
+Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question.
+IMPORTANT: When referring to the feedback or insights from other models, use their REAL NAMES (e.g. "Claude", "GPT-5") instead of "Response A/B".
+
+Consider:
 - The individual responses and their insights
 - The peer rankings and what they reveal about response quality
 - Any patterns of agreement or disagreement
@@ -170,7 +184,8 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
     return {
         "model": CHAIRMAN_MODEL,
-        "response": response.get('content', '')
+        "response": response.get('content', ''),
+        "usage": response.get('usage')
     }
 
 
@@ -323,7 +338,8 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
     stage3_result = await stage3_synthesize_final(
         user_query,
         stage1_results,
-        stage2_results
+        stage2_results,
+        label_to_model
     )
 
     # Prepare metadata
