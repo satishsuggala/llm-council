@@ -45,7 +45,8 @@ async def query_model(
 
             return {
                 'content': message.get('content'),
-                'reasoning_details': message.get('reasoning_details')
+                'reasoning_details': message.get('reasoning_details'),
+                'usage': data.get('usage')
             }
 
     except Exception as e:
@@ -77,3 +78,30 @@ async def query_models_parallel(
 
     # Map models to their responses
     return {model: response for model, response in zip(models, responses)}
+
+
+async def get_credits() -> Optional[Dict[str, Any]]:
+    """
+    Get OpenRouter credit information.
+
+    Returns:
+        Dict with 'total_credits' and 'total_usage', or None if failed
+    """
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://openrouter.ai/api/v1/credits",
+                headers=headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get('data')
+
+    except Exception as e:
+        print(f"Error fetching credits: {e}")
+        return None
