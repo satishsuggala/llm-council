@@ -134,4 +134,45 @@ export const api = {
     }
     return response.json();
   },
+
+  /**
+   * Authenticate with Google.
+   */
+  async authWithGoogle(credential) {
+    const response = await fetch(`${API_BASE}/api/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ credential }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to authenticate with Google');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get current authenticated user.
+   */
+  async getCurrentUser() {
+    const response = await fetch(`${API_BASE}/api/auth/me`);
+    if (!response.ok) {
+      throw new Error('Not authenticated');
+    }
+    return response.json();
+  },
+
+  /**
+   * Logout.
+   */
+  async logout() {
+    const response = await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to logout');
+    }
+    return response.json();
+  },
 };

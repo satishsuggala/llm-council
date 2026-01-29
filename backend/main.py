@@ -1,15 +1,15 @@
 """FastAPI backend for LLM Council."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 import json
 import asyncio
 
-from . import storage, openrouter
+from . import storage, openrouter, auth, users
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 
 app = FastAPI(title="LLM Council API")
@@ -50,10 +50,87 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
+class GoogleAuthRequest(BaseModel):
+    """Request for Google OAuth authentication."""
+    credential: str
+
+
 @app.get("/")
 async def root():
     """Health check endpoint."""
     return {"status": "ok", "service": "LLM Council API"}
+
+
+# ============ AUTH ENDPOINTS ============
+
+@app.post("/api/auth/google")
+async def auth_google(request: GoogleAuthRequest):
+    """
+    Authenticate with Google OAuth.
+    Verifies the Google token and creates a session.
+    """
+    # Verify Google token
+    google_user = auth.verify_google_token(request.credential)
+    if not google_user:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    
+    # Get or create user
+    user = users.get_or_create_user(
+        user_id=google_user["sub"],
+        email=google_user["email"],
+        name=google_user["name"],
+        picture=google_user.get("picture")
+    )
+    
+    # Create session token
+    session_token = auth.create_session_token(user["id"])
+    
+    # Create response with cookie
+    response = JSONResponse(content={
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user.get("picture")
+        }
+    })
+    
+    # Set HTTP-only cookie
+    response.set_cookie(
+        key=auth.SESSION_COOKIE_NAME,
+        value=session_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7  # 1 week
+    )
+    
+    return response
+
+
+@app.get("/api/auth/me")
+async def get_current_user(request: Request):
+    """Get the current authenticated user."""
+    user = await auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    return {
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user.get("picture")
+        }
+    }
+
+
+@app.post("/api/auth/logout")
+async def logout():
+    """Log out the current user by clearing the session cookie."""
+    response = JSONResponse(content={"status": "ok"})
+    response.delete_cookie(key=auth.SESSION_COOKIE_NAME)
+    return response
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])

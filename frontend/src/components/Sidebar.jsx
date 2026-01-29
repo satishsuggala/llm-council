@@ -8,6 +8,8 @@ export default function Sidebar({
   onNewConversation,
   onDeleteConversation,
   credits,
+  user,
+  onLogout,
 }) {
   return (
     <div className="sidebar">
@@ -61,6 +63,29 @@ export default function Sidebar({
           <div className="credits-total">
             of ${credits.total_credits} total
           </div>
+        </div>
+      )}
+
+      {user && (
+        <div className="user-profile">
+          {user.picture ? (
+            <img src={user.picture} alt={user.name} className="user-avatar" />
+          ) : (
+            <div className="user-avatar-placeholder">
+              {user.name?.charAt(0) || 'U'}
+            </div>
+          )}
+          <div className="user-info">
+            <div className="user-name" title={user.name}>{user.name}</div>
+            <div className="user-email" title={user.email}>{user.email}</div>
+          </div>
+          <button className="logout-btn" onClick={onLogout} title="Sign Out">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
         </div>
       )}
     </div>
