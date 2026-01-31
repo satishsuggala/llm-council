@@ -13,6 +13,11 @@ function App() {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [credits, setCredits] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed(prev => !prev);
+  };
 
   // Load conversations and credits on mount or when user changes
   useEffect(() => {
@@ -268,6 +273,8 @@ function App() {
         credits={credits}
         user={user}
         onLogout={logout}
+        isCollapsed={isSidebarCollapsed}
+        onToggle={handleToggleSidebar}
       />
       <ChatInterface
         conversation={currentConversation}
