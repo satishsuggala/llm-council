@@ -102,7 +102,7 @@ async def auth_google(request: GoogleAuthRequest):
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
-        max_age=60 * 60 * 24 * 7  # 1 week
+        max_age=60 * 60 * 24 * 400  # 400 days (browser max)
     )
     
     return response

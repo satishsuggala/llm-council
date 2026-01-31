@@ -9,7 +9,7 @@ export const api = {
    * List all conversations.
    */
   async listConversations() {
-    const response = await fetch(`${API_BASE}/api/conversations`);
+    const response = await fetch(`${API_BASE}/api/conversations`, { credentials: 'include' });
     if (!response.ok) {
       throw new Error('Failed to list conversations');
     }
@@ -26,6 +26,7 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({}),
+      credentials: 'include',
     });
     if (!response.ok) {
       throw new Error('Failed to create conversation');
@@ -38,7 +39,8 @@ export const api = {
    */
   async getConversation(conversationId) {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}`
+      `${API_BASE}/api/conversations/${conversationId}`,
+      { credentials: 'include' }
     );
     if (!response.ok) {
       throw new Error('Failed to get conversation');
@@ -58,6 +60,7 @@ export const api = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ content }),
+        credentials: 'include',
       }
     );
     if (!response.ok) {
@@ -82,6 +85,7 @@ export const api = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ content }),
+        credentials: 'include',
       }
     );
 
@@ -116,7 +120,7 @@ export const api = {
    * Get OpenRouter credits.
    */
   async getCredits() {
-    const response = await fetch(`${API_BASE}/api/credits`);
+    const response = await fetch(`${API_BASE}/api/credits`, { credentials: 'include' });
     if (!response.ok) {
       throw new Error('Failed to get credits');
     }
@@ -128,6 +132,7 @@ export const api = {
   async deleteConversation(conversationId) {
     const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
       method: 'DELETE',
+      credentials: 'include',
     });
     if (!response.ok) {
       throw new Error('Failed to delete conversation');
@@ -145,6 +150,7 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ credential }),
+      credentials: 'include',
     });
     if (!response.ok) {
       throw new Error('Failed to authenticate with Google');
@@ -156,7 +162,7 @@ export const api = {
    * Get current authenticated user.
    */
   async getCurrentUser() {
-    const response = await fetch(`${API_BASE}/api/auth/me`);
+    const response = await fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' });
     if (!response.ok) {
       throw new Error('Not authenticated');
     }
@@ -169,6 +175,7 @@ export const api = {
   async logout() {
     const response = await fetch(`${API_BASE}/api/auth/logout`, {
       method: 'POST',
+      credentials: 'include',
     });
     if (!response.ok) {
       throw new Error('Failed to logout');
