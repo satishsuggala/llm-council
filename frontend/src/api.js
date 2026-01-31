@@ -141,6 +141,17 @@ export const api = {
   },
 
   /**
+   * Get all memories for the current user.
+   */
+  async getMemories() {
+    const response = await fetch(`${API_BASE}/api/memories`, { credentials: 'include' });
+    if (!response.ok) {
+      throw new Error('Failed to get memories');
+    }
+    return response.json();
+  },
+
+  /**
    * Authenticate with Google.
    */
   async authWithGoogle(credential) {

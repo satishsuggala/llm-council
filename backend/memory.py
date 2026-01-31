@@ -63,3 +63,19 @@ async def add_interaction(user_id: str, query: str, response: str):
         await asyncio.to_thread(memory.add, messages, user_id=user_id)
     except Exception as e:
         print(f"Error adding memory: {e}")
+
+
+async def get_all_memories(user_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all memories for a user (async).
+    """
+    try:
+        results = await asyncio.to_thread(memory.get_all, user_id=user_id)
+        # results is typically a list of dicts: [{'id': ..., 'memory': ..., 'created_at': ...}]
+        # Check if it's a dict with 'results' or list
+        if isinstance(results, dict):
+             return results.get("results", [])
+        return results if results else []
+    except Exception as e:
+        print(f"Error getting all memories: {e}")
+        return []

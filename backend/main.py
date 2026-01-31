@@ -148,6 +148,18 @@ async def get_credits():
     return credits
 
 
+@app.get("/api/memories")
+async def get_memories(request: Request):
+    """Get all memories for the current user."""
+    user = await auth.get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    memories = await memory.get_all_memories(user["id"])
+    return memories
+
+
+
 @app.post("/api/conversations", response_model=Conversation)
 async def create_conversation(request: CreateConversationRequest):
     """Create a new conversation."""
