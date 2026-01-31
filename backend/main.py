@@ -9,7 +9,7 @@ import uuid
 import json
 import asyncio
 
-from . import storage, openrouter, auth, users
+from . import storage, openrouter, auth, users, memory
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 
 app = FastAPI(title="LLM Council API")
@@ -175,7 +175,7 @@ async def get_conversation(conversation_id: str):
 
 
 @app.post("/api/conversations/{conversation_id}/message")
-async def send_message(conversation_id: str, request: SendMessageRequest):
+async def send_message(conversation_id: str, request: SendMessageRequest, raw_request: Request):
     """
     Send a message and run the 3-stage council process.
     Returns the complete response with all stages.
@@ -197,9 +197,24 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
         storage.update_conversation_title(conversation_id, title)
 
     # Run the 3-stage council process
+    user = await auth.get_current_user(raw_request)
+    memories = ""
+    if user:
+        memories = await memory.get_relevant_memories(user["id"], request.content)
+
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content
+        request.content,
+        memories=memories
     )
+
+    # Add interaction to memory if authenticated
+    if user:
+        # Use asyncio.create_task for non-blocking storage
+        asyncio.create_task(memory.add_interaction(
+            user["id"], 
+            request.content, 
+            stage3_result.get("response", "")
+        ))
 
     # Add assistant message with all stages
     storage.add_assistant_message(
@@ -219,7 +234,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
 
 @app.post("/api/conversations/{conversation_id}/message/stream")
-async def send_message_stream(conversation_id: str, request: SendMessageRequest):
+async def send_message_stream(conversation_id: str, request: SendMessageRequest, raw_request: Request):
     """
     Send a message and stream the 3-stage council process.
     Returns Server-Sent Events as each stage completes.
@@ -255,8 +270,29 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, label_to_model)
+            
+            # Get user and memories for Stage 3
+            user = await auth.get_current_user(raw_request)
+            memories = ""
+            if user:
+                memories = await memory.get_relevant_memories(user["id"], request.content)
+            
+            stage3_result = await stage3_synthesize_final(
+                request.content, 
+                stage1_results, 
+                stage2_results, 
+                label_to_model,
+                memories=memories
+            )
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
+
+            # Add interaction to memory if authenticated
+            if user:
+                asyncio.create_task(memory.add_interaction(
+                    user["id"], 
+                    request.content, 
+                    stage3_result.get("response", "")
+                ))
 
             # Wait for title generation if it was started
             if title_task:

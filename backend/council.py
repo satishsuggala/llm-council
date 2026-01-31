@@ -116,7 +116,8 @@ async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
     stage2_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
+    label_to_model: Dict[str, str],
+    memories: str = ""
 ) -> Dict[str, Any]:
     """
     Stage 3: Chairman synthesizes final response.
@@ -159,6 +160,9 @@ STAGE 1 - Individual Responses:
 
 STAGE 2 - Peer Rankings:
 {stage2_text}
+
+USER MEMORIES (Context from past interactions):
+{memories if memories else "No relevant memories found."}
 
 Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question.
 IMPORTANT: When referring to the feedback or insights from other models, use their REAL NAMES (e.g. "Claude", "GPT-5") instead of "Response A/B".
@@ -308,7 +312,7 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(user_query: str, memories: str = "") -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
 
@@ -339,7 +343,8 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
         user_query,
         stage1_results,
         stage2_results,
-        label_to_model
+        label_to_model,
+        memories
     )
 
     # Prepare metadata
