@@ -26,7 +26,8 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         if response is not None:  # Only include successful responses
             stage1_results.append({
                 "model": model,
-                "response": response.get('content', '')
+                "response": response.get('content', ''),
+                "usage": response.get('usage')
             })
 
     return stage1_results
@@ -106,6 +107,7 @@ Now provide your evaluation and ranking:"""
             stage2_results.append({
                 "model": model,
                 "ranking": full_text,
+                "usage": response.get('usage'),
                 "parsed_ranking": parsed
             })
 

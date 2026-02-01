@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import MarkdownTable from './MarkdownTable';
+import CostDisplay from './CostDisplay';
 import './Stage1.css';
 
 export default function Stage1({ responses }) {
@@ -8,6 +9,8 @@ export default function Stage1({ responses }) {
   if (!responses || responses.length === 0) {
     return null;
   }
+
+  const currentResponse = responses[activeTab];
 
   return (
     <div className="stage stage1">
@@ -20,13 +23,21 @@ export default function Stage1({ responses }) {
             className={`tab ${activeTab === index ? 'active' : ''}`}
             onClick={() => setActiveTab(index)}
           >
-            {resp.model.split('/')[1] || resp.model}
+            <span>{resp.model.split('/')[1] || resp.model}</span>
+            {resp.usage?.cost !== undefined && (
+              <span className="tab-cost-badge">
+                ${Number(resp.usage.cost).toFixed(5)}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       <div className="tab-content">
-        <div className="model-name">{responses[activeTab].model}</div>
+        <div className="model-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div className="model-name">{currentResponse.model}</div>
+          <CostDisplay cost={currentResponse.usage?.cost} />
+        </div>
         <div className="response-text markdown-content">
           <MarkdownTable content={responses[activeTab].response} />
         </div>

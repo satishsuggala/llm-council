@@ -115,3 +115,57 @@
   line-height: 1.7;
   font-size: 15px;
 }
+
+.cost-breakdown {
+  margin-bottom: 20px;
+  background: #fcfcfc;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.cost-breakdown h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cost-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #ddd;
+  color: #555;
+  font-weight: 600;
+}
+
+.cost-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.cost-table .text-right {
+  text-align: right;
+}
+
+.stage-header td {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #444;
+  font-size: 12px;
+  padding-top: 10px;
+}
+
+.total-row td {
+  border-top: 2px solid #ddd;
+  border-bottom: none;
+  font-size: 14px;
+  padding-top: 12px;
+  color: #2d8a2d;
+}

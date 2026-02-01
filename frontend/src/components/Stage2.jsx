@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import CostDisplay from './CostDisplay';
 import ReactMarkdown from 'react-markdown';
 import './Stage2.css';
 
@@ -20,6 +21,8 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
   if (!rankings || rankings.length === 0) {
     return null;
   }
+
+  const currentRanking = rankings[activeTab];
 
   return (
     <div className="stage stage2">
@@ -44,8 +47,11 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
       </div>
 
       <div className="tab-content">
-        <div className="ranking-model">
-          {rankings[activeTab].model}
+        <div className="ranking-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div className="ranking-model">
+            {currentRanking.model}
+          </div>
+          <CostDisplay cost={currentRanking.usage?.cost} />
         </div>
         <div className="ranking-content markdown-content">
           <ReactMarkdown>
@@ -54,20 +60,20 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
         </div>
 
         {rankings[activeTab].parsed_ranking &&
-         rankings[activeTab].parsed_ranking.length > 0 && (
-          <div className="parsed-ranking">
-            <strong>Extracted Ranking:</strong>
-            <ol>
-              {rankings[activeTab].parsed_ranking.map((label, i) => (
-                <li key={i}>
-                  {labelToModel && labelToModel[label]
-                    ? labelToModel[label].split('/')[1] || labelToModel[label]
-                    : label}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+          rankings[activeTab].parsed_ranking.length > 0 && (
+            <div className="parsed-ranking">
+              <strong>Extracted Ranking:</strong>
+              <ol>
+                {rankings[activeTab].parsed_ranking.map((label, i) => (
+                  <li key={i}>
+                    {labelToModel && labelToModel[label]
+                      ? labelToModel[label].split('/')[1] || labelToModel[label]
+                      : label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
       </div>
 
       {aggregateRankings && aggregateRankings.length > 0 && (

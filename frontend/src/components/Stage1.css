@@ -29,6 +29,8 @@
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 .tab:hover {
@@ -43,6 +45,21 @@
   border-color: #4a90e2;
   border-bottom-color: #ffffff;
   font-weight: 600;
+}
+
+.tab-cost-badge {
+  margin-left: 8px;
+  font-size: 0.85em;
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #666;
+}
+
+.tab.active .tab-cost-badge {
+  color: #4a90e2;
+  background: rgba(74, 144, 226, 0.1);
 }
 
 .tab-content {
