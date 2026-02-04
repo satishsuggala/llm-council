@@ -9,8 +9,12 @@ export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  availableModels = [],
+  modelsError = null,
 }) {
   const [input, setInput] = useState('');
+  const [selectedModels, setSelectedModels] = useState([]);
+  const initializedConversationId = useRef(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -21,10 +25,35 @@ export default function ChatInterface({
     scrollToBottom();
   }, [conversation]);
 
+  useEffect(() => {
+    if (!conversation?.id || availableModels.length === 0) {
+      return;
+    }
+
+    if (conversation.messages?.length !== 0) {
+      return;
+    }
+
+    if (initializedConversationId.current !== conversation.id) {
+      setSelectedModels(availableModels);
+      initializedConversationId.current = conversation.id;
+    }
+  }, [conversation?.id, availableModels]);
+
+  const toggleModel = (model) => {
+    setSelectedModels((prev) => (
+      prev.includes(model)
+        ? prev.filter((item) => item !== model)
+        : [...prev, model]
+    ));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.trim() && !isLoading) {
-      onSendMessage(input);
+    const hasModelSelection = availableModels.length === 0 || selectedModels.length > 0;
+    if (input.trim() && !isLoading && hasModelSelection) {
+      const modelsPayload = availableModels.length > 0 ? selectedModels : undefined;
+      onSendMessage(input, modelsPayload);
       setInput('');
     }
   };
@@ -122,22 +151,79 @@ export default function ChatInterface({
 
       {conversation.messages.length === 0 && (
         <form className="input-form" onSubmit={handleSubmit}>
-          <textarea
-            className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            rows={3}
-          />
-          <button
-            type="submit"
-            className="send-button"
-            disabled={!input.trim() || isLoading}
-          >
-            Send
-          </button>
+          <div className="model-selector">
+            <div className="model-selector-header">
+              <div className="model-selector-title">Council members</div>
+              <div className="model-selector-help">
+                Choose which models to consult for this question.
+              </div>
+            </div>
+
+            {availableModels.length === 0 && !modelsError && (
+              <div className="model-selector-note">Loading available models...</div>
+            )}
+
+            {modelsError && (
+              <div className="model-selector-warning">
+                {modelsError} Sending will use the default council.
+              </div>
+            )}
+
+            {availableModels.length > 0 && (
+              <div className="model-selector-grid">
+                {availableModels.map((model) => {
+                  const shortName = model.split('/')[1] || model;
+                  const isSelected = selectedModels.includes(model);
+                  return (
+                    <label
+                      key={model}
+                      className={`model-option ${isSelected ? 'is-selected' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleModel(model)}
+                        disabled={isLoading}
+                      />
+                      <span className="model-option-text">
+                        <span className="model-option-name">{shortName}</span>
+                        <span className="model-option-id">{model}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {availableModels.length > 0 && selectedModels.length === 0 && (
+              <div className="model-selector-warning">
+                Select at least one model to continue.
+              </div>
+            )}
+          </div>
+
+          <div className="input-row">
+            <textarea
+              className="message-input"
+              placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+              rows={3}
+            />
+            <button
+              type="submit"
+              className="send-button"
+              disabled={
+                !input.trim()
+                || isLoading
+                || (availableModels.length > 0 && selectedModels.length === 0)
+              }
+            >
+              Send
+            </button>
+          </div>
         </form>
       )}
     </div>
