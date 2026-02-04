@@ -16,6 +16,8 @@ function App() {
   const [credits, setCredits] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [modelsError, setModelsError] = useState(null);
 
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed(prev => !prev);
@@ -34,16 +36,34 @@ function App() {
           // Let's just load the most recent one if available
           handleSelectConversation(convs[0].id);
         }
-
-        const creds = await api.getCredits();
-        setCredits(creds);
       } catch (err) {
         console.error('Failed to load initial data:', err);
       }
+
+      try {
+        const creds = await api.getCredits();
+        setCredits(creds);
+      } catch (err) {
+        console.error('Failed to load credits:', err);
+      }
+
+      await loadModels();
     };
 
     loadData();
   }, []);
+
+  const loadModels = async () => {
+    try {
+      const models = await api.listModels();
+      setAvailableModels(models);
+      setModelsError(null);
+    } catch (err) {
+      console.error('Failed to load models:', err);
+      setModelsError('Unable to load council models.');
+      setAvailableModels([]);
+    }
+  };
 
   const handleSelectConversation = async (id) => {
     setCurrentConversationId(id);
@@ -80,7 +100,7 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content, models) => {
     if (!currentConversationId) return;
 
     setIsLoading(true);
@@ -146,7 +166,7 @@ function App() {
         if (type === 'complete') {
           api.getCredits().then(setCredits);
         }
-      });
+      }, models);
     } catch (err) {
       console.error('Failed to send message:', err);
       // Remove the temporary assistant message or show error
@@ -183,6 +203,8 @@ function App() {
         conversation={currentConversation}
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
+        availableModels={availableModels}
+        modelsError={modelsError}
       />
       <MemoryModal
         isOpen={isMemoryModalOpen}

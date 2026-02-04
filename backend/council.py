@@ -314,7 +314,11 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str, memories: str = "") -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(
+    user_query: str,
+    models: List[str] | None = None,
+    memories: str = ""
+) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
 
@@ -325,7 +329,7 @@ async def run_full_council(user_query: str, memories: str = "") -> Tuple[List, L
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_query, models)
 
     # If no models responded successfully, return error
     if not stage1_results:
@@ -335,7 +339,11 @@ async def run_full_council(user_query: str, memories: str = "") -> Tuple[List, L
         }, {}
 
     # Stage 2: Collect rankings
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
+    stage2_results, label_to_model = await stage2_collect_rankings(
+        user_query,
+        stage1_results,
+        models
+    )
 
     # Calculate aggregate rankings
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)

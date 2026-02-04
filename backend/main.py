@@ -10,6 +10,7 @@ import json
 import asyncio
 
 from . import storage, openrouter, auth, users, memory
+from .config import COUNCIL_MODELS
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 
 app = FastAPI(title="LLM Council API")
@@ -32,6 +33,7 @@ class CreateConversationRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
     content: str
+    models: Optional[List[str]] = None
 
 
 class ConversationMetadata(BaseModel):
@@ -73,7 +75,7 @@ async def auth_google(request: GoogleAuthRequest):
     google_user = auth.verify_google_token(request.credential)
     if not google_user:
         raise HTTPException(status_code=401, detail="Invalid Google token")
-    
+
     # Get or create user
     user = users.get_or_create_user(
         user_id=google_user["sub"],
@@ -81,10 +83,10 @@ async def auth_google(request: GoogleAuthRequest):
         name=google_user["name"],
         picture=google_user.get("picture")
     )
-    
+
     # Create session token
     session_token = auth.create_session_token(user["id"])
-    
+
     # Create response with cookie
     response = JSONResponse(content={
         "user": {
@@ -94,7 +96,7 @@ async def auth_google(request: GoogleAuthRequest):
             "picture": user.get("picture")
         }
     })
-    
+
     # Set HTTP-only cookie
     response.set_cookie(
         key=auth.SESSION_COOKIE_NAME,
@@ -104,7 +106,7 @@ async def auth_google(request: GoogleAuthRequest):
         samesite="lax",
         max_age=60 * 60 * 24 * 400  # 400 days (browser max)
     )
-    
+
     return response
 
 
@@ -114,7 +116,7 @@ async def get_current_user(request: Request):
     user = await auth.get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     return {
         "user": {
             "id": user["id"],
@@ -139,6 +141,32 @@ async def list_conversations():
     return storage.list_conversations()
 
 
+@app.get("/api/models")
+async def list_models():
+    """List available council models."""
+    return {"models": COUNCIL_MODELS}
+
+
+def resolve_selected_models(requested_models: Optional[List[str]]) -> List[str]:
+    """Validate and normalize a requested model selection."""
+    if requested_models is None:
+        return COUNCIL_MODELS
+
+    invalid_models = [model for model in requested_models if model not in COUNCIL_MODELS]
+    if invalid_models:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid models requested: {', '.join(invalid_models)}",
+        )
+
+    # Preserve configured ordering and remove duplicates
+    selected_models = [model for model in COUNCIL_MODELS if model in requested_models]
+    if not selected_models:
+        raise HTTPException(status_code=400, detail="At least one model must be selected.")
+
+    return selected_models
+
+
 @app.get("/api/credits")
 async def get_credits():
     """Get OpenRouter credits."""
@@ -154,7 +182,7 @@ async def get_memories(request: Request):
     user = await auth.get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     memories = await memory.get_all_memories(user["id"])
     return memories
 
@@ -200,6 +228,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, raw_re
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
 
+    selected_models = resolve_selected_models(request.models)
+
     # Add user message
     storage.add_user_message(conversation_id, request.content)
 
@@ -216,6 +246,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest, raw_re
 
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
         request.content,
+        models=selected_models,
         memories=memories
     )
 
@@ -223,8 +254,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, raw_re
     if user:
         # Use asyncio.create_task for non-blocking storage
         asyncio.create_task(memory.add_interaction(
-            user["id"], 
-            request.content, 
+            user["id"],
+            request.content,
             stage3_result.get("response", "")
         ))
 
@@ -258,6 +289,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
+    selected_models = resolve_selected_models(request.models)
 
     async def event_generator():
         try:
@@ -271,28 +303,32 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content)
+            stage1_results = await stage1_collect_responses(request.content, selected_models)
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results)
+            stage2_results, label_to_model = await stage2_collect_rankings(
+                request.content,
+                stage1_results,
+                selected_models
+            )
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            
+
             # Get user and memories for Stage 3
             user = await auth.get_current_user(raw_request)
             memories = ""
             if user:
                 memories = await memory.get_relevant_memories(user["id"], request.content)
-            
+
             stage3_result = await stage3_synthesize_final(
-                request.content, 
-                stage1_results, 
-                stage2_results, 
+                request.content,
+                stage1_results,
+                stage2_results,
                 label_to_model,
                 memories=memories
             )
@@ -301,8 +337,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
             # Add interaction to memory if authenticated
             if user:
                 asyncio.create_task(memory.add_interaction(
-                    user["id"], 
-                    request.content, 
+                    user["id"],
+                    request.content,
                     stage3_result.get("response", "")
                 ))
 
